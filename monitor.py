@@ -35,7 +35,7 @@ def print_system_usage():
             continue
 
     # Сортировка процессов по PID (по умолчанию)
-    processes.sort(key=lambda x: x[0])
+    processes.sort(key=lambda x: int(x[0]))  # Преобразуем PID в целое число для корректной сортировки
 
     for pid, name, memory_percent, cpu_percent in processes:
         tree.insert('', 'end', values=(pid, name, f"{memory_percent:.2f}", f"{cpu_percent:.2f}"))
@@ -69,7 +69,11 @@ def sort_column(col_id):
 
     # Сортируем элементы по столбцу
     items = tree.get_children('')
-    items = sorted(items, key=lambda x: tree.set(x, col_id))
+    if col_id == 'PID':
+        items = sorted(items, key=lambda x: int(tree.set(x, col_id)))
+    else:
+        items = sorted(items, key=lambda x: tree.set(x, col_id))
+
     for index, item in enumerate(items):
         tree.move(item, '', index)
 
@@ -78,7 +82,10 @@ def sort_column(col_id):
 def sort_column_asc(col_id):
     tree.heading(col_id, command=lambda: sort_column_desc(col_id))
     items = tree.get_children('')
-    items = sorted(items, key=lambda x: tree.set(x, col_id))
+    if col_id == 'PID':
+        items = sorted(items, key=lambda x: int(tree.set(x, col_id)))
+    else:
+        items = sorted(items, key=lambda x: tree.set(x, col_id))
     for index, item in enumerate(items):
         tree.move(item, '', index)
 
@@ -86,7 +93,10 @@ def sort_column_asc(col_id):
 def sort_column_desc(col_id):
     tree.heading(col_id, command=lambda: sort_column_asc(col_id))
     items = tree.get_children('')
-    items = sorted(items, key=lambda x: tree.set(x, col_id), reverse=True)
+    if col_id == 'PID':
+        items = sorted(items, key=lambda x: int(tree.set(x, col_id)), reverse=True)
+    else:
+        items = sorted(items, key=lambda x: tree.set(x, col_id), reverse=True)
     for index, item in enumerate(items):
         tree.move(item, '', index)
 
