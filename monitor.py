@@ -25,11 +25,22 @@ def sort_processes(processes):
 
 
 def update_treeview(tree, processes):
+    selected_item = tree.selection()
+    selected_pid = None
+    if selected_item:
+        selected_pid = tree.item(selected_item, 'values')[0]
+
     for row in tree.get_children():
         tree.delete(row)
 
     for pid, name, memory_percent, cpu_percent in processes:
         tree.insert('', 'end', values=(pid, name, f"{memory_percent:.2f}", f"{cpu_percent:.2f}"))
+
+    if selected_pid:
+        for row in tree.get_children():
+            if tree.item(row, 'values')[0] == selected_pid:
+                tree.selection_set(row)
+                break
 
 
 def print_system_usage():
