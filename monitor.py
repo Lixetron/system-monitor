@@ -1,3 +1,4 @@
+import datetime
 import psutil
 import tkinter as tk
 from tkinter import ttk, filedialog
@@ -49,8 +50,10 @@ def save_to_file():
         if not output_file:
             return  # Если пользователь отменил выбор файла, выходим из функции
 
+    current_datetime = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
     with open(output_file, 'a') as f:
-        f.write("\n\n=== Data saved at this moment ===\n")
+        f.write(f"=== Data saved at {current_datetime} ===\n")
         f.write(label_cpu.cget("text") + "\n")
         f.write(label_memory.cget("text") + "\n")
         f.write(label_disk.cget("text") + "\n")
