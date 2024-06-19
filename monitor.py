@@ -93,10 +93,12 @@ def toggle_dynamic_update():
     global dynamic_update_enabled
     dynamic_update_enabled = not dynamic_update_enabled
     if dynamic_update_enabled:
-        label_update_status.config(text="Dynamic update: ON")
+        label_update_status.config(text="Dynamic update: ON", foreground="green")
+        btn_toggle_update.config(text="Disable Dynamic Update\n(Enabled)")
         threading.Thread(target=print_system_usage).start()  # Начать динамическое обновление в отдельном потоке
     else:
-        label_update_status.config(text="Dynamic update: OFF")
+        label_update_status.config(text="Dynamic update: OFF", foreground="red")
+        btn_toggle_update.config(text="Enable Dynamic Update\n(Disabled)")
 
 
 def manual_update():
@@ -200,7 +202,7 @@ scrollbar.grid(row=0, column=1, sticky='ns')
 tree.configure(yscrollcommand=scrollbar.set)
 
 # Кнопка для включения/отключения динамического обновления
-btn_toggle_update = ttk.Button(root, text="Toggle Dynamic Update", command=toggle_dynamic_update)
+btn_toggle_update = ttk.Button(root, text="Enable Dynamic Update\n(Disabled)", command=toggle_dynamic_update)
 btn_toggle_update.grid(row=1, column=0, sticky="ew", padx=10, pady=10)
 
 # Кнопка для ручного обновления данных
