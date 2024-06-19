@@ -6,10 +6,22 @@ import datetime
 
 output_file = ""  # Глобальная переменная для пути сохранения файла
 dynamic_update_enabled = False  # Флаг для отслеживания состояния динамического обновления
+current_sort_column = 'PID'  # Колонка, по которой сортируем в данный момент
+current_sort_order = 'asc'  # Порядок сортировки: 'asc' или 'desc'
 
 
 def clear_console():
     os.system('cls' if os.name == 'nt' else 'clear')
+
+
+def sort_processes(processes):
+    global current_sort_column, current_sort_order
+    if current_sort_column == 'PID':
+        processes.sort(key=lambda x: int(x[0]), reverse=(current_sort_order == 'desc'))
+    else:
+        index = {'Name': 1, 'Memory%': 2, 'CPU%': 3}[current_sort_column]
+        processes.sort(key=lambda x: x[index], reverse=(current_sort_order == 'desc'))
+    return processes
 
 
 def print_system_usage():
@@ -37,8 +49,7 @@ def print_system_usage():
         except (psutil.NoSuchProcess, psutil.AccessDenied, psutil.ZombieProcess):
             continue
 
-    # Сортировка процессов по PID (по умолчанию)
-    processes.sort(key=lambda x: int(x[0]))  # Преобразуем PID в целое число для корректной сортировки
+    processes = sort_processes(processes)
 
     for pid, name, memory_percent, cpu_percent in processes:
         tree.insert('', 'end', values=(pid, name, f"{memory_percent:.2f}", f"{cpu_percent:.2f}"))
@@ -55,7 +66,6 @@ def toggle_dynamic_update():
         print_system_usage()  # Начать динамическое обновление
     else:
         label_update_status.config(text="Dynamic update: OFF")
-        clear_console()  # Очистить консоль при отключении динамического обновления
 
 
 def manual_update():
@@ -88,47 +98,13 @@ def save_to_file():
 
 # Функции сортировки по столбцам
 def sort_column(col_id):
-    # Получаем текущее состояние сортировки столбца
-    current_sort_order = tree.heading(col_id)['command']
-
-    # Определяем порядок сортировки (по возрастанию или убыванию)
-    if current_sort_order == 'ascending':
-        tree.heading(col_id, command=lambda: sort_column_desc(col_id))
+    global current_sort_column, current_sort_order
+    if current_sort_column == col_id:
+        current_sort_order = 'desc' if current_sort_order == 'asc' else 'asc'
     else:
-        tree.heading(col_id, command=lambda: sort_column_asc(col_id))
-
-    # Сортируем элементы по столбцу
-    items = tree.get_children('')
-    if col_id == 'PID':
-        items = sorted(items, key=lambda x: int(tree.set(x, col_id)))
-    else:
-        items = sorted(items, key=lambda x: tree.set(x, col_id))
-
-    for index, item in enumerate(items):
-        tree.move(item, '', index)
-
-
-# Функции сортировки по возрастанию и убыванию для каждого столбца
-def sort_column_asc(col_id):
-    tree.heading(col_id, command=lambda: sort_column_desc(col_id))
-    items = tree.get_children('')
-    if col_id == 'PID':
-        items = sorted(items, key=lambda x: int(tree.set(x, col_id)))
-    else:
-        items = sorted(items, key=lambda x: tree.set(x, col_id))
-    for index, item in enumerate(items):
-        tree.move(item, '', index)
-
-
-def sort_column_desc(col_id):
-    tree.heading(col_id, command=lambda: sort_column_asc(col_id))
-    items = tree.get_children('')
-    if col_id == 'PID':
-        items = sorted(items, key=lambda x: int(tree.set(x, col_id)), reverse=True)
-    else:
-        items = sorted(items, key=lambda x: tree.set(x, col_id), reverse=True)
-    for index, item in enumerate(items):
-        tree.move(item, '', index)
+        current_sort_column = col_id
+        current_sort_order = 'asc'
+    print_system_usage()
 
 
 # Создание GUI
@@ -171,13 +147,13 @@ scrollbar = ttk.Scrollbar(frame_processes, orient="vertical", command=tree.yview
 scrollbar.grid(row=0, column=1, sticky='ns')
 tree.configure(yscrollcommand=scrollbar.set)
 
-# Кнопка для ручного обновления данных
-btn_manual_update = ttk.Button(root, text="Manual Update", command=manual_update)
-btn_manual_update.grid(row=1, column=0, sticky="ew", padx=10, pady=10)
-
 # Кнопка для включения/отключения динамического обновления
 btn_toggle_update = ttk.Button(root, text="Toggle Dynamic Update", command=toggle_dynamic_update)
-btn_toggle_update.grid(row=1, column=1, sticky="ew", padx=10, pady=10)
+btn_toggle_update.grid(row=1, column=0, sticky="ew", padx=10, pady=10)
+
+# Кнопка для ручного обновления данных
+btn_manual_update = ttk.Button(root, text="Manual Update", command=manual_update)
+btn_manual_update.grid(row=1, column=1, sticky="ew", padx=10, pady=10)
 
 # Метка для отображения состояния динамического обновления
 label_update_status = ttk.Label(root, text="Dynamic update: OFF", foreground="red")
