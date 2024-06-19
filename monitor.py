@@ -161,6 +161,33 @@ def update_column_headings(tree):
         tree.heading(col, text=heading, command=lambda _col=col: sort_column(tree, _col))
 
 
+def kill_process():
+    selected_item = tree.selection()
+    if not selected_item:
+        return
+
+    pid = tree.item(selected_item, 'values')[0]
+    try:
+        pid = int(pid)  # Преобразуем PID к целочисленному типу
+        if pid < 0:
+            return
+
+        proc = psutil.Process(pid)
+
+        # Рекурсивно завершаем процесс и все его дочерние процессы
+        for child in proc.children(recursive=True):
+            child.terminate()
+        proc.terminate()
+
+        refresh_data()
+    except ValueError:
+        print(f"Invalid PID value: {pid}")
+    except psutil.NoSuchProcess:
+        print(f"Process with PID {pid} no longer exists.")
+    except psutil.AccessDenied:
+        print(f"Access to terminate process with PID {pid} denied.")
+
+
 # Создание GUI
 root = tk.Tk()
 root.title("System Monitor")
@@ -209,13 +236,18 @@ btn_toggle_update.grid(row=1, column=0, sticky="ew", padx=10, pady=10)
 btn_manual_update = ttk.Button(root, text="Manual Update", command=manual_update)
 btn_manual_update.grid(row=1, column=1, sticky="ew", padx=10, pady=10)
 
+# Кнопка для завершения процесса
+btn_kill_process = ttk.Button(root, text="Kill Process", command=kill_process)
+btn_kill_process.grid(row=1, column=2, sticky="ew", padx=10, pady=10)
+
 # Метка для отображения состояния динамического обновления
 label_update_status = ttk.Label(root, text="Dynamic update: OFF", foreground="red")
-label_update_status.grid(row=2, column=0, columnspan=2, pady=5)
+label_update_status.grid(row=2, column=0, columnspan=3, pady=5)
 
 # Настройка растягиваемости и выравнивания элементов
 root.columnconfigure(0, weight=1)
 root.columnconfigure(1, weight=1)
+root.columnconfigure(2, weight=1)
 root.rowconfigure(0, weight=1)
 
 frame_stats.columnconfigure(0, weight=1)
