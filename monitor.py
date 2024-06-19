@@ -43,13 +43,18 @@ def print_system_usage():
     for pid, name, memory_percent, cpu_percent in processes:
         tree.insert('', 'end', values=(pid, name, f"{memory_percent:.2f}", f"{cpu_percent:.2f}"))
 
+    if dynamic_update_enabled:
+        root.after(1000, print_system_usage)
+
 
 def toggle_dynamic_update():
     global dynamic_update_enabled
     dynamic_update_enabled = not dynamic_update_enabled
     if dynamic_update_enabled:
+        label_update_status.config(text="Dynamic update: ON")
         print_system_usage()  # Начать динамическое обновление
     else:
+        label_update_status.config(text="Dynamic update: OFF")
         clear_console()  # Очистить консоль при отключении динамического обновления
 
 
@@ -173,6 +178,10 @@ btn_manual_update.grid(row=1, column=0, sticky="ew", padx=10, pady=10)
 # Кнопка для включения/отключения динамического обновления
 btn_toggle_update = ttk.Button(root, text="Toggle Dynamic Update", command=toggle_dynamic_update)
 btn_toggle_update.grid(row=1, column=1, sticky="ew", padx=10, pady=10)
+
+# Метка для отображения состояния динамического обновления
+label_update_status = ttk.Label(root, text="Dynamic update: OFF", foreground="red")
+label_update_status.grid(row=2, column=0, columnspan=2, pady=5)
 
 # Настройка растягиваемости и выравнивания элементов
 root.columnconfigure(0, weight=1)
