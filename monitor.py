@@ -3,6 +3,7 @@ import tkinter as tk
 from tkinter import ttk, filedialog
 import os
 import datetime
+import threading
 
 output_file = ""  # Глобальная переменная для пути сохранения файла
 dynamic_update_enabled = False  # Флаг для отслеживания состояния динамического обновления
@@ -43,21 +44,15 @@ def update_treeview(tree, processes):
                 break
 
 
-def print_system_usage():
-    global dynamic_update_enabled
+def fetch_system_usage():
     cpu_usage = psutil.cpu_percent()
     memory_info = psutil.virtual_memory()
     disk_usage = psutil.disk_usage('/')
     net_io = psutil.net_io_counters()
+    return cpu_usage, memory_info, disk_usage, net_io
 
-    # Обновление интерфейса
-    clear_console()
-    label_cpu.config(text=f"CPU Usage: {cpu_usage}%")
-    label_memory.config(text=f"Memory Usage: {memory_info.percent}%")
-    label_disk.config(text=f"Disk Usage: {disk_usage.percent}%")
-    label_network.config(
-        text=f"Network: Sent = {net_io.bytes_sent / (1024 * 1024):.2f} MB, Received = {net_io.bytes_recv / (1024 * 1024):.2f} MB")
 
+def fetch_processes():
     processes = []
     for proc in psutil.process_iter(['pid', 'name', 'memory_percent', 'cpu_percent']):
         try:
@@ -65,12 +60,33 @@ def print_system_usage():
                 (proc.info['pid'], proc.info['name'], proc.info['memory_percent'], proc.info['cpu_percent']))
         except (psutil.NoSuchProcess, psutil.AccessDenied, psutil.ZombieProcess):
             continue
+    return processes
 
+
+def update_system_info():
+    cpu_usage, memory_info, disk_usage, net_io = fetch_system_usage()
+
+    label_cpu.config(text=f"CPU Usage: {cpu_usage}%")
+    label_memory.config(text=f"Memory Usage: {memory_info.percent}%")
+    label_disk.config(text=f"Disk Usage: {disk_usage.percent}%")
+    label_network.config(
+        text=f"Network: Sent = {net_io.bytes_sent / (1024 * 1024):.2f} MB, Received = {net_io.bytes_recv / (1024 * 1024):.2f} MB")
+
+
+def refresh_data():
+    processes = fetch_processes()
     processes = sort_processes(processes)
     update_treeview(tree, processes)
 
+
+def print_system_usage():
+    global dynamic_update_enabled
+
+    update_system_info()
+    refresh_data()
+
     if dynamic_update_enabled:
-        root.after(1000, print_system_usage)
+        root.after(1000, print_system_usage)  # Планируем следующее обновление через 1 секунду
 
 
 def toggle_dynamic_update():
@@ -78,13 +94,13 @@ def toggle_dynamic_update():
     dynamic_update_enabled = not dynamic_update_enabled
     if dynamic_update_enabled:
         label_update_status.config(text="Dynamic update: ON")
-        print_system_usage()  # Начать динамическое обновление
+        threading.Thread(target=print_system_usage).start()  # Начать динамическое обновление в отдельном потоке
     else:
         label_update_status.config(text="Dynamic update: OFF")
 
 
 def manual_update():
-    print_system_usage()  # Выполнить ручное обновление данных
+    threading.Thread(target=print_system_usage).start()  # Выполнить ручное обновление данных в отдельном потоке
 
 
 def save_to_file():
@@ -210,8 +226,8 @@ frame_processes.columnconfigure(0, weight=1)
 frame_processes.rowconfigure(0, weight=1)
 
 # При запуске приложения сразу подтягиваем данные
-print_system_usage()
-update_column_headings(tree)  # Обновить заголовки столбцов при запуске
+print_system_usage()  # Обновление данных
+update_column_headings(tree)  # Обновить заголовки столбцов
 
 # Меню для выбора места сохранения лог-файла
 menu_bar = tk.Menu(root)
