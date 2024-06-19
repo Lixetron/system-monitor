@@ -106,7 +106,8 @@ def toggle_dynamic_update():
 def manual_update():
     if dynamic_update_enabled:
         return  # Игнорируем ручное обновление, если включено динамическое
-    threading.Thread(target=print_system_usage).start()  # Выполнить ручное обновление данных в отдельном потоке
+    update_system_info()  # Обновляем системную информацию
+    refresh_data()  # Выполняем ручное обновление данных
 
 
 def save_to_file():
