@@ -163,5 +163,8 @@ frame_stats.rowconfigure(3, weight=1)
 frame_processes.columnconfigure(0, weight=1)
 frame_processes.rowconfigure(0, weight=1)
 
+# При запуске приложения сразу подтягиваем данные
+print_system_usage()
+
 # Запуск основного цикла GUI
 root.mainloop()
