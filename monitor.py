@@ -56,9 +56,37 @@ def save_to_file():
             f.write(f"{row[0]:>6} {row[1]:<25} {row[2]:>8} {row[3]:>8}\n")
 
 
+# Функции сортировки по столбцам
 def sort_column(col_id):
+    # Получаем текущее состояние сортировки столбца
+    current_sort_order = tree.heading(col_id)['command']
+
+    # Определяем порядок сортировки (по возрастанию или убыванию)
+    if current_sort_order == 'ascending':
+        tree.heading(col_id, command=lambda: sort_column_desc(col_id))
+    else:
+        tree.heading(col_id, command=lambda: sort_column_asc(col_id))
+
+    # Сортируем элементы по столбцу
     items = tree.get_children('')
     items = sorted(items, key=lambda x: tree.set(x, col_id))
+    for index, item in enumerate(items):
+        tree.move(item, '', index)
+
+
+# Функции сортировки по возрастанию и убыванию для каждого столбца
+def sort_column_asc(col_id):
+    tree.heading(col_id, command=lambda: sort_column_desc(col_id))
+    items = tree.get_children('')
+    items = sorted(items, key=lambda x: tree.set(x, col_id))
+    for index, item in enumerate(items):
+        tree.move(item, '', index)
+
+
+def sort_column_desc(col_id):
+    tree.heading(col_id, command=lambda: sort_column_asc(col_id))
+    items = tree.get_children('')
+    items = sorted(items, key=lambda x: tree.set(x, col_id), reverse=True)
     for index, item in enumerate(items):
         tree.move(item, '', index)
 
