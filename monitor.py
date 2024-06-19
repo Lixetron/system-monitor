@@ -1,10 +1,11 @@
-import datetime
 import psutil
 import tkinter as tk
 from tkinter import ttk, filedialog
 import os
+import datetime
 
 output_file = ""  # Глобальная переменная для пути сохранения файла
+dynamic_update_enabled = False  # Флаг для отслеживания состояния динамического обновления
 
 
 def clear_console():
@@ -12,7 +13,8 @@ def clear_console():
 
 
 def print_system_usage():
-    cpu_usage = psutil.cpu_percent(interval=1)
+    global dynamic_update_enabled
+    cpu_usage = psutil.cpu_percent()
     memory_info = psutil.virtual_memory()
     disk_usage = psutil.disk_usage('/')
     net_io = psutil.net_io_counters()
@@ -40,6 +42,19 @@ def print_system_usage():
 
     for pid, name, memory_percent, cpu_percent in processes:
         tree.insert('', 'end', values=(pid, name, f"{memory_percent:.2f}", f"{cpu_percent:.2f}"))
+
+
+def toggle_dynamic_update():
+    global dynamic_update_enabled
+    dynamic_update_enabled = not dynamic_update_enabled
+    if dynamic_update_enabled:
+        print_system_usage()  # Начать динамическое обновление
+    else:
+        clear_console()  # Очистить консоль при отключении динамического обновления
+
+
+def manual_update():
+    print_system_usage()  # Выполнить ручное обновление данных
 
 
 def save_to_file():
@@ -151,13 +166,13 @@ scrollbar = ttk.Scrollbar(frame_processes, orient="vertical", command=tree.yview
 scrollbar.grid(row=0, column=1, sticky='ns')
 tree.configure(yscrollcommand=scrollbar.set)
 
-# Кнопка для обновления данных
-btn_refresh = ttk.Button(root, text="Refresh", command=print_system_usage)
-btn_refresh.grid(row=1, column=0, pady=10, sticky="ew")
+# Кнопка для ручного обновления данных
+btn_manual_update = ttk.Button(root, text="Manual Update", command=manual_update)
+btn_manual_update.grid(row=1, column=0, sticky="ew", padx=10, pady=10)
 
-# Кнопка для сохранения данных в файл
-btn_save = ttk.Button(root, text="Save to File", command=save_to_file)
-btn_save.grid(row=1, column=1, pady=10, sticky="ew")
+# Кнопка для включения/отключения динамического обновления
+btn_toggle_update = ttk.Button(root, text="Toggle Dynamic Update", command=toggle_dynamic_update)
+btn_toggle_update.grid(row=1, column=1, sticky="ew", padx=10, pady=10)
 
 # Настройка растягиваемости и выравнивания элементов
 root.columnconfigure(0, weight=1)
