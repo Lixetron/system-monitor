@@ -26,12 +26,19 @@ def print_system_usage():
 
     # Очистка и заполнение таблицы процессов
     tree.delete(*tree.get_children())
+    processes = []
     for proc in psutil.process_iter(['pid', 'name', 'memory_percent', 'cpu_percent']):
         try:
-            tree.insert('', 'end', values=(proc.info['pid'], proc.info['name'], f"{proc.info['memory_percent']:.2f}",
-                                           f"{proc.info['cpu_percent']:.2f}"))
+            processes.append(
+                (proc.info['pid'], proc.info['name'], proc.info['memory_percent'], proc.info['cpu_percent']))
         except (psutil.NoSuchProcess, psutil.AccessDenied, psutil.ZombieProcess):
             continue
+
+    # Сортировка процессов по PID (по умолчанию)
+    processes.sort(key=lambda x: x[0])
+
+    for pid, name, memory_percent, cpu_percent in processes:
+        tree.insert('', 'end', values=(pid, name, f"{memory_percent:.2f}", f"{cpu_percent:.2f}"))
 
 
 def save_to_file():
@@ -47,6 +54,13 @@ def save_to_file():
         for row_id in tree.get_children():
             row = tree.item(row_id)['values']
             f.write(f"{row[0]:>6} {row[1]:<25} {row[2]:>8} {row[3]:>8}\n")
+
+
+def sort_column(col_id):
+    items = tree.get_children('')
+    items = sorted(items, key=lambda x: tree.set(x, col_id))
+    for index, item in enumerate(items):
+        tree.move(item, '', index)
 
 
 # Создание GUI
@@ -73,11 +87,12 @@ label_network.grid(row=3, column=0, sticky="w")
 frame_processes = ttk.Frame(root, padding="10")
 frame_processes.grid(row=0, column=1, sticky="nsew")
 
-tree = ttk.Treeview(frame_processes, columns=('PID', 'Name', 'Memory%', 'CPU%'))
-tree.heading('#0', text='PID')
-tree.heading('#1', text='Name')
-tree.heading('#2', text='Memory%')
-tree.heading('#3', text='CPU%')
+tree = ttk.Treeview(frame_processes, columns=('PID', 'Name', 'Memory%', 'CPU%'), show='headings')
+tree.heading('PID', text='PID', command=lambda: sort_column('PID'))
+tree.heading('Name', text='Name', command=lambda: sort_column('Name'))
+tree.heading('Memory%', text='Memory%', command=lambda: sort_column('Memory%'))
+tree.heading('CPU%', text='CPU%', command=lambda: sort_column('CPU%'))
+
 tree.column('#0', stretch=tk.YES)
 tree.column('#1', stretch=tk.YES)
 tree.column('#2', stretch=tk.YES)
