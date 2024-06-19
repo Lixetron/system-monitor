@@ -1,15 +1,19 @@
 import psutil
+import platform
 import tkinter as tk
 from tkinter import ttk, filedialog
 import os
 import datetime
 import threading
+import pynvml
+
+# Initialize NVML
+pynvml.nvmlInit()
 
 output_file = ""  # Глобальная переменная для пути сохранения файла
 dynamic_update_enabled = False  # Флаг для отслеживания состояния динамического обновления
 current_sort_column = 'PID'  # Колонка, по которой сортируем в данный момент
 current_sort_order = 'asc'  # Порядок сортировки: 'asc' или 'desc'
-
 
 def clear_console():
     os.system('cls' if os.name == 'nt' else 'clear')
@@ -66,11 +70,62 @@ def fetch_processes():
 def update_system_info():
     cpu_usage, memory_info, disk_usage, net_io = fetch_system_usage()
 
-    label_cpu.config(text=f"CPU Usage: {cpu_usage}%")
-    label_memory.config(text=f"Memory Usage: {memory_info.percent}%")
-    label_disk.config(text=f"Disk Usage: {disk_usage.percent}%")
+    # Добавляем информацию о процессоре
+    cpu_info = f"Processor: {platform.processor()}"
+
+    # Добавляем информацию об оперативной памяти
+    memory_info_str = f"Memory: Total = {get_size(memory_info.total)}, " \
+                      f"Available = {get_size(memory_info.available)}"
+
+    # Добавляем информацию о видеокарте
+    gpu_info = ""
+    try:
+        import pynvml
+
+        pynvml.nvmlInit()
+        device_count = pynvml.nvmlDeviceGetCount()
+        for i in range(device_count):
+            handle = pynvml.nvmlDeviceGetHandleByIndex(i)
+            gpu_name = pynvml.nvmlDeviceGetName(handle)
+            mem_info = pynvml.nvmlDeviceGetMemoryInfo(handle)
+            gpu_info += f"GPU {i + 1}: {gpu_name}, Memory Total = {get_size(mem_info.total)}, " \
+                        f"Memory Used = {get_size(mem_info.used)}, Memory Free = {get_size(mem_info.free)}\n"
+
+        pynvml.nvmlShutdown()
+    except ImportError:
+        gpu_info = "pynvml library not found"
+
+    # Добавляем информацию о дисках
+    disk_info = ""
+    partitions = psutil.disk_partitions()
+    for partition in partitions:
+        try:
+            partition_usage = psutil.disk_usage(partition.mountpoint)
+            disk_info += f"Device: {partition.device}, Total: {get_size(partition_usage.total)}, " \
+                         f"Used: {get_size(partition_usage.used)}, Free: {get_size(partition_usage.free)}\n"
+        except PermissionError:
+            disk_info = "Permission denied"
+
+    # Добавляем информацию об операционной системе
+    os_info = f"OS: {platform.system()} {platform.release()} {platform.version()}"
+
+    label_cpu.config(text=f"CPU Usage: {cpu_usage}%\n{cpu_info}")
+    label_memory.config(text=f"Memory Usage: {memory_info.percent}%\n{memory_info_str}")
+    label_disk.config(text=f"Disk Usage: {disk_usage.percent}%\n{disk_info}")
     label_network.config(
         text=f"Network: Sent = {net_io.bytes_sent / (1024 * 1024):.2f} MB, Received = {net_io.bytes_recv / (1024 * 1024):.2f} MB")
+    label_gpu.config(text=gpu_info)
+    label_os.config(text=os_info)
+
+
+def get_size(bytes, suffix="B"):
+    # Функция для форматирования размера файла
+    factor = 1024
+    for unit in ["", "K", "M", "G", "T", "P"]:
+        if bytes < factor:
+            return f"{bytes:.2f} {unit}{suffix}"
+        bytes /= factor
+    return f"{bytes:.2f} {unit}{suffix}"
 
 
 def refresh_data():
@@ -126,31 +181,27 @@ def save_to_file():
         f.write(label_memory.cget("text") + "\n")
         f.write(label_disk.cget("text") + "\n")
         f.write(label_network.cget("text") + "\n")
+        f.write(label_gpu.cget("text") + "\n")
+        f.write(label_os.cget("text") + "\n")
 
         f.write("\nRunning Processes:\n")
         f.write(f"{'PID':>6} {'Name':<25} {'Memory%':>8} {'CPU%':>8}\n")
-        for row_id in tree.get_children():
-            row = tree.item(row_id)['values']
-            f.write(f"{row[0]:>6} {row[1]:<25} {row[2]:>8} {row[3]:>8}\n")
+
+        processes = fetch_processes()
+        for pid, name, memory_percent, cpu_percent in processes:
+            f.write(f"{pid:6} {name:<25} {memory_percent:>8.2f} {cpu_percent:>8.2f}\n")
+
+        f.write("\n")
 
 
-def sort_column(tree, col_id):
+def sort_column(tree, col):
     global current_sort_column, current_sort_order
-    if current_sort_column == col_id:
+    if current_sort_column == col:
         current_sort_order = 'desc' if current_sort_order == 'asc' else 'asc'
     else:
-        current_sort_column = col_id
+        current_sort_column = col
         current_sort_order = 'asc'
-
-    data = [(tree.set(child, col_id), child) for child in tree.get_children('')]
-    if current_sort_column == 'PID':
-        data.sort(key=lambda x: int(x[0]), reverse=(current_sort_order == 'desc'))
-    else:
-        data.sort(reverse=(current_sort_order == 'desc'))
-
-    for index, (val, child) in enumerate(data):
-        tree.move(child, '', index)
-
+    refresh_data()
     update_column_headings(tree)
 
 
@@ -213,6 +264,13 @@ label_disk.grid(row=2, column=0, sticky="w")
 label_network = ttk.Label(frame_stats, text="Network: ")
 label_network.grid(row=3, column=0, sticky="w")
 
+# Добавляем метки для информации об устройствах
+label_gpu = ttk.Label(frame_stats, text="GPU: ")
+label_gpu.grid(row=4, column=0, sticky="w")
+
+label_os = ttk.Label(frame_stats, text="OS: ")
+label_os.grid(row=5, column=0, sticky="w")
+
 # Фрейм с таблицей процессов
 frame_processes = ttk.Frame(root, padding="10")
 frame_processes.grid(row=0, column=1, sticky="nsew")
@@ -260,6 +318,8 @@ frame_stats.rowconfigure(0, weight=1)
 frame_stats.rowconfigure(1, weight=1)
 frame_stats.rowconfigure(2, weight=1)
 frame_stats.rowconfigure(3, weight=1)
+frame_stats.rowconfigure(4, weight=1)
+frame_stats.rowconfigure(5, weight=1)
 
 frame_processes.columnconfigure(0, weight=1)
 frame_processes.rowconfigure(0, weight=1)
@@ -278,3 +338,6 @@ file_menu.add_command(label="Save Log As...", command=save_to_file)
 
 # Запуск основного цикла GUI
 root.mainloop()
+
+# Выход из NVML
+pynvml.nvmlShutdown()
