@@ -1,9 +1,9 @@
 import psutil
 import tkinter as tk
-from tkinter import ttk
+from tkinter import ttk, filedialog
 import os
 
-output_file = "system_monitor_log.txt"
+output_file = ""  # Глобальная переменная для пути сохранения файла
 
 
 def clear_console():
@@ -42,6 +42,13 @@ def print_system_usage():
 
 
 def save_to_file():
+    global output_file
+    if not output_file:
+        output_file = filedialog.asksaveasfilename(defaultextension=".txt",
+                                                   filetypes=[("Text files", "*.txt"), ("All files", "*.*")])
+        if not output_file:
+            return  # Если пользователь отменил выбор файла, выходим из функции
+
     with open(output_file, 'a') as f:
         f.write("\n\n=== Data saved at this moment ===\n")
         f.write(label_cpu.cget("text") + "\n")
@@ -165,6 +172,14 @@ frame_processes.rowconfigure(0, weight=1)
 
 # При запуске приложения сразу подтягиваем данные
 print_system_usage()
+
+# Меню для выбора места сохранения лог-файла
+menu_bar = tk.Menu(root)
+root.config(menu=menu_bar)
+
+file_menu = tk.Menu(menu_bar, tearoff=0)
+menu_bar.add_cascade(label="File", menu=file_menu)
+file_menu.add_command(label="Save Log As...", command=save_to_file)
 
 # Запуск основного цикла GUI
 root.mainloop()
