@@ -10,8 +10,6 @@ dynamic_update_enabled = False  # Флаг для отслеживания со�
 current_sort_column = 'PID'  # Колонка, по которой сортируем в данный момент
 current_sort_order = 'asc'  # Порядок сортировки: 'asc' или 'desc'
 
-# Словарь для хранения дочерних процессов по родительским PID
-process_tree = {}
 
 def clear_console():
     os.system('cls' if os.name == 'nt' else 'clear')
@@ -20,72 +18,53 @@ def clear_console():
 def sort_processes(processes):
     global current_sort_column, current_sort_order
     if current_sort_column == 'PID':
-        processes.sort(key=lambda x: int(x['pid']), reverse=(current_sort_order == 'desc'))
+        processes.sort(key=lambda x: int(x[0]), reverse=(current_sort_order == 'desc'))
     else:
-        index = {'Name': 'name', 'Memory%': 'memory_percent', 'CPU%': 'cpu_percent'}[current_sort_column]
+        index = {'Name': 1, 'Memory%': 2, 'CPU%': 3}[current_sort_column]
         processes.sort(key=lambda x: x[index], reverse=(current_sort_order == 'desc'))
     return processes
 
 
 def update_treeview(tree, processes):
-    tree.delete(*tree.get_children())
-    for proc in processes:
-        pid = proc['pid']
-        name = proc['name']
-        memory_percent = proc['memory_percent']
-        cpu_percent = proc['cpu_percent']
+    selected_item = tree.selection()
+    selected_pid = None
+    if selected_item:
+        selected_pid = tree.item(selected_item, 'values')[0]
 
-        if pid in process_tree and process_tree[pid]:
-            parent_id = tree.insert('', 'end', values=(pid, name, f"{memory_percent:.2f}", f"{cpu_percent:.2f}"), open=True)
-            for child in process_tree[pid]:
-                child_pid = child['pid']
-                child_name = child['name']
-                child_memory_percent = child['memory_percent']
-                child_cpu_percent = child['cpu_percent']
-                tree.insert(parent_id, 'end', values=(child_pid, child_name, f"{child_memory_percent:.2f}", f"{child_cpu_percent:.2f}"))
-        else:
-            tree.insert('', 'end', values=(pid, name, f"{memory_percent:.2f}", f"{cpu_percent:.2f}"))
+    for row in tree.get_children():
+        tree.delete(row)
+
+    for pid, name, memory_percent, cpu_percent in processes:
+        tree.insert('', 'end', values=(pid, name, f"{memory_percent:.2f}", f"{cpu_percent:.2f}"))
+
+    if selected_pid:
+        for row in tree.get_children():
+            if tree.item(row, 'values')[0] == selected_pid:
+                tree.selection_set(row)
+                break
+
+
+def fetch_system_usage():
+    cpu_usage = psutil.cpu_percent()
+    memory_info = psutil.virtual_memory()
+    disk_usage = psutil.disk_usage('/')
+    net_io = psutil.net_io_counters()
+    return cpu_usage, memory_info, disk_usage, net_io
 
 
 def fetch_processes():
-    global process_tree
     processes = []
-    process_tree = {}
-
-    for proc in psutil.process_iter(['pid', 'name', 'memory_percent', 'cpu_percent', 'ppid']):
+    for proc in psutil.process_iter(['pid', 'name', 'memory_percent', 'cpu_percent']):
         try:
-            proc_info = proc.info
-            processes.append({
-                'pid': proc_info['pid'],
-                'name': proc_info['name'],
-                'memory_percent': proc_info['memory_percent'],
-                'cpu_percent': proc_info['cpu_percent'],
-            })
-            ppid = proc_info['ppid']
-            if ppid in process_tree:
-                process_tree[ppid].append({
-                    'pid': proc_info['pid'],
-                    'name': proc_info['name'],
-                    'memory_percent': proc_info['memory_percent'],
-                    'cpu_percent': proc_info['cpu_percent'],
-                })
-            else:
-                process_tree[ppid] = [{
-                    'pid': proc_info['pid'],
-                    'name': proc_info['name'],
-                    'memory_percent': proc_info['memory_percent'],
-                    'cpu_percent': proc_info['cpu_percent'],
-                }]
+            processes.append(
+                (proc.info['pid'], proc.info['name'], proc.info['memory_percent'], proc.info['cpu_percent']))
         except (psutil.NoSuchProcess, psutil.AccessDenied, psutil.ZombieProcess):
             continue
     return processes
 
 
 def update_system_info():
-    cpu_usage = psutil.cpu_percent()
-    memory_info = psutil.virtual_memory()
-    disk_usage = psutil.disk_usage('/')
-    net_io = psutil.net_io_counters()
+    cpu_usage, memory_info, disk_usage, net_io = fetch_system_usage()
 
     label_cpu.config(text=f"CPU Usage: {cpu_usage}%")
     label_memory.config(text=f"Memory Usage: {memory_info.percent}%")
@@ -149,8 +128,9 @@ def save_to_file():
 
         f.write("\nRunning Processes:\n")
         f.write(f"{'PID':>6} {'Name':<25} {'Memory%':>8} {'CPU%':>8}\n")
-        for proc in fetch_processes():
-            f.write(f"{proc['pid']:>6} {proc['name']:<25} {proc['memory_percent']:.2f} {proc['cpu_percent']:.2f}\n")
+        for row_id in tree.get_children():
+            row = tree.item(row_id)['values']
+            f.write(f"{row[0]:>6} {row[1]:<25} {row[2]:>8} {row[3]:>8}\n")
 
 
 def sort_column(tree, col_id):
@@ -236,7 +216,7 @@ label_network.grid(row=3, column=0, sticky="w")
 frame_processes = ttk.Frame(root, padding="10")
 frame_processes.grid(row=0, column=1, sticky="nsew")
 
-tree = ttk.Treeview(frame_processes, columns=('PID', 'Name', 'Memory%', 'CPU%'), show='tree', selectmode='browse')
+tree = ttk.Treeview(frame_processes, columns=('PID', 'Name', 'Memory%', 'CPU%'), show='headings')
 tree.heading('PID', text='PID', command=lambda: sort_column(tree, 'PID'))
 tree.heading('Name', text='Name', command=lambda: sort_column(tree, 'Name'))
 tree.heading('Memory%', text='Memory%', command=lambda: sort_column(tree, 'Memory%'))
