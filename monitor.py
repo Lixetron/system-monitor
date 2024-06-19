@@ -24,6 +24,14 @@ def sort_processes(processes):
     return processes
 
 
+def update_treeview(tree, processes):
+    for row in tree.get_children():
+        tree.delete(row)
+
+    for pid, name, memory_percent, cpu_percent in processes:
+        tree.insert('', 'end', values=(pid, name, f"{memory_percent:.2f}", f"{cpu_percent:.2f}"))
+
+
 def print_system_usage():
     global dynamic_update_enabled
     cpu_usage = psutil.cpu_percent()
@@ -39,8 +47,6 @@ def print_system_usage():
     label_network.config(
         text=f"Network: Sent = {net_io.bytes_sent / (1024 * 1024):.2f} MB, Received = {net_io.bytes_recv / (1024 * 1024):.2f} MB")
 
-    # Очистка и заполнение таблицы процессов
-    tree.delete(*tree.get_children())
     processes = []
     for proc in psutil.process_iter(['pid', 'name', 'memory_percent', 'cpu_percent']):
         try:
@@ -50,9 +56,7 @@ def print_system_usage():
             continue
 
     processes = sort_processes(processes)
-
-    for pid, name, memory_percent, cpu_percent in processes:
-        tree.insert('', 'end', values=(pid, name, f"{memory_percent:.2f}", f"{cpu_percent:.2f}"))
+    update_treeview(tree, processes)
 
     if dynamic_update_enabled:
         root.after(1000, print_system_usage)
@@ -96,15 +100,22 @@ def save_to_file():
             f.write(f"{row[0]:>6} {row[1]:<25} {row[2]:>8} {row[3]:>8}\n")
 
 
-# Функции сортировки по столбцам
-def sort_column(col_id):
+def sort_column(tree, col_id):
     global current_sort_column, current_sort_order
     if current_sort_column == col_id:
         current_sort_order = 'desc' if current_sort_order == 'asc' else 'asc'
     else:
         current_sort_column = col_id
         current_sort_order = 'asc'
-    print_system_usage()
+
+    data = [(tree.set(child, col_id), child) for child in tree.get_children('')]
+    if current_sort_column == 'PID':
+        data.sort(key=lambda x: int(x[0]), reverse=(current_sort_order == 'desc'))
+    else:
+        data.sort(reverse=(current_sort_order == 'desc'))
+
+    for index, (val, child) in enumerate(data):
+        tree.move(child, '', index)
 
 
 # Создание GUI
@@ -132,10 +143,10 @@ frame_processes = ttk.Frame(root, padding="10")
 frame_processes.grid(row=0, column=1, sticky="nsew")
 
 tree = ttk.Treeview(frame_processes, columns=('PID', 'Name', 'Memory%', 'CPU%'), show='headings')
-tree.heading('PID', text='PID', command=lambda: sort_column('PID'))
-tree.heading('Name', text='Name', command=lambda: sort_column('Name'))
-tree.heading('Memory%', text='Memory%', command=lambda: sort_column('Memory%'))
-tree.heading('CPU%', text='CPU%', command=lambda: sort_column('CPU%'))
+tree.heading('PID', text='PID', command=lambda: sort_column(tree, 'PID'))
+tree.heading('Name', text='Name', command=lambda: sort_column(tree, 'Name'))
+tree.heading('Memory%', text='Memory%', command=lambda: sort_column(tree, 'Memory%'))
+tree.heading('CPU%', text='CPU%', command=lambda: sort_column(tree, 'CPU%'))
 
 tree.column('#0', stretch=tk.YES)
 tree.column('#1', stretch=tk.YES)
