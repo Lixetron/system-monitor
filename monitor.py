@@ -117,6 +117,20 @@ def sort_column(tree, col_id):
     for index, (val, child) in enumerate(data):
         tree.move(child, '', index)
 
+    update_column_headings(tree)
+
+
+def update_column_headings(tree):
+    columns = ['PID', 'Name', 'Memory%', 'CPU%']
+    for col in columns:
+        heading = col
+        if col == current_sort_column:
+            if current_sort_order == 'asc':
+                heading += " ↑"
+            else:
+                heading += " ↓"
+        tree.heading(col, text=heading, command=lambda _col=col: sort_column(tree, _col))
+
 
 # Создание GUI
 root = tk.Tk()
@@ -186,6 +200,7 @@ frame_processes.rowconfigure(0, weight=1)
 
 # При запуске приложения сразу подтягиваем данные
 print_system_usage()
+update_column_headings(tree)  # Обновить заголовки столбцов при запуске
 
 # Меню для выбора места сохранения лог-файла
 menu_bar = tk.Menu(root)
