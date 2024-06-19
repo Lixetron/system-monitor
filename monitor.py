@@ -95,13 +95,17 @@ def toggle_dynamic_update():
     if dynamic_update_enabled:
         label_update_status.config(text="Dynamic update: ON", foreground="green")
         btn_toggle_update.config(text="Disable Dynamic Update\n(Enabled)")
+        btn_manual_update.config(state=tk.DISABLED)  # Блокируем кнопку ручного обновления
         threading.Thread(target=print_system_usage).start()  # Начать динамическое обновление в отдельном потоке
     else:
         label_update_status.config(text="Dynamic update: OFF", foreground="red")
         btn_toggle_update.config(text="Enable Dynamic Update\n(Disabled)")
+        btn_manual_update.config(state=tk.NORMAL)  # Разблокируем кнопку ручного обновления
 
 
 def manual_update():
+    if dynamic_update_enabled:
+        return  # Игнорируем ручное обновление, если включено динамическое
     threading.Thread(target=print_system_usage).start()  # Выполнить ручное обновление данных в отдельном потоке
 
 
