@@ -5,8 +5,10 @@ import os
 
 output_file = "system_monitor_log.txt"
 
+
 def clear_console():
     os.system('cls' if os.name == 'nt' else 'clear')
+
 
 def print_system_usage():
     cpu_usage = psutil.cpu_percent(interval=1)
@@ -19,15 +21,18 @@ def print_system_usage():
     label_cpu.config(text=f"CPU Usage: {cpu_usage}%")
     label_memory.config(text=f"Memory Usage: {memory_info.percent}%")
     label_disk.config(text=f"Disk Usage: {disk_usage.percent}%")
-    label_network.config(text=f"Network: Sent = {net_io.bytes_sent / (1024 * 1024):.2f} MB, Received = {net_io.bytes_recv / (1024 * 1024):.2f} MB")
+    label_network.config(
+        text=f"Network: Sent = {net_io.bytes_sent / (1024 * 1024):.2f} MB, Received = {net_io.bytes_recv / (1024 * 1024):.2f} MB")
 
     # Очистка и заполнение таблицы процессов
     tree.delete(*tree.get_children())
     for proc in psutil.process_iter(['pid', 'name', 'memory_percent', 'cpu_percent']):
         try:
-            tree.insert('', 'end', values=(proc.info['pid'], proc.info['name'], f"{proc.info['memory_percent']:.2f}", f"{proc.info['cpu_percent']:.2f}"))
+            tree.insert('', 'end', values=(proc.info['pid'], proc.info['name'], f"{proc.info['memory_percent']:.2f}",
+                                           f"{proc.info['cpu_percent']:.2f}"))
         except (psutil.NoSuchProcess, psutil.AccessDenied, psutil.ZombieProcess):
             continue
+
 
 def save_to_file():
     with open(output_file, 'a') as f:
@@ -42,6 +47,7 @@ def save_to_file():
         for row_id in tree.get_children():
             row = tree.item(row_id)['values']
             f.write(f"{row[0]:>6} {row[1]:<25} {row[2]:>8} {row[3]:>8}\n")
+
 
 # Создание GUI
 root = tk.Tk()
