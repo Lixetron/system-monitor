@@ -90,11 +90,25 @@ tree.configure(yscrollcommand=scrollbar.set)
 
 # Кнопка для обновления данных
 btn_refresh = ttk.Button(root, text="Refresh", command=print_system_usage)
-btn_refresh.grid(row=1, column=0, pady=10)
+btn_refresh.grid(row=1, column=0, pady=10, sticky="ew")
 
 # Кнопка для сохранения данных в файл
 btn_save = ttk.Button(root, text="Save to File", command=save_to_file)
-btn_save.grid(row=1, column=1, pady=10)
+btn_save.grid(row=1, column=1, pady=10, sticky="ew")
+
+# Настройка растягиваемости и выравнивания элементов
+root.columnconfigure(0, weight=1)
+root.columnconfigure(1, weight=1)
+root.rowconfigure(0, weight=1)
+
+frame_stats.columnconfigure(0, weight=1)
+frame_stats.rowconfigure(0, weight=1)
+frame_stats.rowconfigure(1, weight=1)
+frame_stats.rowconfigure(2, weight=1)
+frame_stats.rowconfigure(3, weight=1)
+
+frame_processes.columnconfigure(0, weight=1)
+frame_processes.rowconfigure(0, weight=1)
 
 # Запуск основного цикла GUI
 root.mainloop()
