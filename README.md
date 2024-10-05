@@ -2,6 +2,7 @@
 
 [![Windows](https://custom-icon-badges.demolab.com/badge/Windows-0078D6?logo=windows11&logoColor=white)](#)
 [![GitHub Release](https://img.shields.io/github/v/release/Lixetron/system-monitor)](https://github.com/Lixetron/system-monitor/releases/latest)
+[![GitHub License](https://img.shields.io/github/license/Lixetron/system-monitor)](LICENSE)
 
 This Python application is a system monitoring tool with a graphical user interface (GUI) built using `tkinter`. It provides real-time information on CPU, memory, disk, network usage, and active processes. The application also supports monitoring GPU statistics using NVIDIA Management Library (NVML) and allows for process termination.
 
